@@ -374,7 +374,6 @@ Below is the typical wiring reference for the system.
 
 # Schematic
 
-```
 ![System Schematic](schematic.jpg)
-```
+
 ---
