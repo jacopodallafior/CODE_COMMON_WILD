@@ -1,60 +1,65 @@
-# JIMNY STEERING SYSTEM  – Arduino + MCP4728 + Encoder
+# Steering Control System (Arduino + Python + MCP4728 + Encoder)
 
 ## Overview
 
-This repository contains three Arduino sketches used to control and test a steering actuation system based on:
+This project implements a **steering control system** based on:
 
-* Quadrature encoder feedback (angle measurement)
-* MCP4728 DAC (analog output generation)
-* Differential voltage control (channel A / channel B)
-* Optional PID closed-loop control
+* Quadrature encoder (angle feedback)
+* MCP4728 DAC (dual analog output)
+* Differential voltage actuation
+* PID closed-loop control
+* Python interface for control, logging, and analysis
 
-The files are organized by increasing system complexity:
+The system is structured in two layers:
 
-1. `writeDACplusread.ino` → Basic DAC test with serial logging
-2. `readDACtoCAR.ino` → DAC control driven externally (e.g., Python)
-3. `PIDfirst.ino` → Full closed-loop control with encoder + PID
+* **Embedded layer (Arduino)** → real-time control and actuation
+* **Host layer (Python)** → user interface, supervision, and data analysis
 
 ---
+
+# System Architecture
+
+```
+User → Python → Arduino (PID) → DAC → Actuator → Encoder → Arduino → Python
+```
+
+---
+
+# Arduino Files
 
 ## 1. writeDACplusread.ino
 
 ### Purpose
 
-This is a **low-level DAC test and debugging tool**.
-It allows you to:
+Low-level **DAC testing and debugging**.
 
-* Send a voltage delta via serial
-* Apply it symmetrically to two DAC channels
-* Monitor outputs in real time
+This is your **first step** when bringing up hardware.
 
-### Key Features
+---
 
-* Converts voltage → DAC code (12-bit resolution)
+### Functionality
 
-* Applies **differential control**:
+* Reads delta voltage from serial
+* Applies symmetric differential output:
 
-  ```
-  VA = IDLE_A + delta
-  VB = IDLE_B - delta
-  ```
+```
+VA = IDLE_A + delta
+VB = IDLE_B - delta
+```
 
-* Outputs structured serial data:
+* Outputs debug data:
 
-  ```
-  DATA,t_ms,delta,va,vb,codeA,codeB
-  ```
+```
+DATA,t_ms,delta,va,vb,codeA,codeB
+```
+
+---
 
 ### Use Case
 
-* Validate wiring of MCP4728
-* Verify voltage scaling and calibration
-* Check system response before closing the loop
-
-### Serial Commands
-
-* Send a number → sets `delta` (in volts)
-* `RESET` → returns to idle condition
+* Validate MCP4728 wiring
+* Verify voltage scaling
+* Check actuator response
 
 ---
 
@@ -62,43 +67,27 @@ It allows you to:
 
 ### Purpose
 
-This is a **clean interface for external control**, typically from Python or another host system.
+Clean interface for **external control (Python-driven)**.
 
-Compared to the previous file:
+---
 
-* Less logging noise
-* Focused on command-response behavior
-* Suitable for integration with higher-level controllers
+### Functionality
 
-### Key Features
-
-* Same differential DAC logic
-* Tighter delta limit (safety constraint)
-* Clean serial output:
-
-  ```
-  DELTA,<val>,VA,<val>,VB,<val>,CODEA,<val>,CODEB,<val>
-  ```
-
-### Control Model
-
-External system (e.g., Python) computes control input:
+* Receives delta from serial
+* Applies DAC output (same differential logic)
+* Returns structured feedback:
 
 ```
-delta = f(controller)
+DELTA,<val>,VA,<val>,VB,<val>,CODEA,<val>,CODEB,<val>
 ```
 
-Arduino only executes:
-
-```
-applyDelta(delta)
-```
+---
 
 ### Use Case
 
-* Hardware-in-the-loop testing
-* Rapid prototyping of controllers in Python
-* System identification experiments
+* Hardware-in-the-loop experiments
+* Python-based control
+* System identification
 
 ---
 
@@ -106,182 +95,294 @@ applyDelta(delta)
 
 ### Purpose
 
-This is the **full embedded closed-loop controller**.
+Full **closed-loop embedded controller**.
 
-It integrates:
-
-* Encoder feedback
-* Angle estimation
-* PID control
-* DAC actuation
-
-This is the core of your steering system.
+This is the core of the system.
 
 ---
 
-### System Architecture
+### Subsystems
+
+#### Encoder
+
+* Quadrature decoding via interrupts
+* Position tracking (counts → angle)
 
 ```
-Encoder → Angle → PID → Delta Voltage → DAC → Actuator
+angle_deg = 360 * counts / (CPR * gear_ratio)
 ```
 
 ---
 
-### Encoder Subsystem
+#### PID Controller
 
-* Quadrature encoder using interrupt-based decoding
-* High-resolution counting
-* Direction detection via state transitions
-
-Angle computation:
+Runs at ~100 Hz:
 
 ```
-angle_deg = 360 * (counts / counts_per_rev) / gear_ratio
+u = Kp * error + Ki * integral - Kd * d(measurement)/dt
 ```
 
-Includes:
+Features:
 
-* ISR event tracking
-* Invalid transition detection (noise/debugging)
+* Anti-windup
+* Derivative on measurement
+* Output saturation
 
 ---
 
-### DAC Control
+#### DAC Output
 
-Same principle as other files:
+Same differential actuation:
 
 ```
 VA = IDLE_A + delta
 VB = IDLE_B - delta
 ```
 
-With:
+---
 
-* Saturation (`DELTA_LIMIT`)
-* Voltage clipping
-* Calibration offsets (`CAL_A`, `CAL_B`)
+### Serial Commands
+
+* `s<value>` → set target angle
+* `e` → enable PID
+* `d` → disable PID
+* `z` → reset encoder
+* `p` → print status
 
 ---
 
-### PID Controller
-
-Discrete-time controller running every:
-
-```
-10 ms (100 Hz)
-```
-
-Control law:
-
-```
-u = Kp * error + Ki * integral - Kd * d(measurement)/dt
-```
-
-Important design choices:
-
-* Derivative on measurement (noise reduction)
-* Integral windup protection
-* Output saturation
-
----
-
-### Serial Interface
-
-#### Control Commands
-
-* `e` → Enable PID
-* `d` → Disable PID
-* `z` → Reset encoder and state
-* `r` → Reverse encoder direction
-* `p` → Print current data
-
-#### Setpoints and Gains
-
-* `s<value>` → target angle (deg)
-* `kp<value>` → proportional gain
-* `ki<value>` → integral gain
-* `kd<value>` → derivative gain
-
----
-
-### Data Logging
-
-Structured output for analysis:
+### Data Output
 
 ```
 DATA,t_ms,target,angle,error,delta,va,vb,codeA,codeB,count,pid_on,p,i,d,isr,invalid
 ```
 
-This is extremely useful for:
+---
 
-* Plotting responses
-* Tuning PID
-* Debugging instability
+# Python Files
+
+## 1. DACtoCAR.py
+
+### Purpose
+
+Manual **open-loop DAC control GUI**.
 
 ---
 
-## Key Design Concepts
+### Features
 
-### 1. Differential Voltage Control
-
-Instead of driving a single signal:
-
-* Two channels are used in opposition
-* Improves symmetry and control resolution
+* Keyboard control of voltage delta
+* Adjustable step size
+* Real-time command sending
 
 ---
 
-### 2. Open-loop vs Closed-loop
+### Controls
 
-| Mode             | File             |
-| ---------------- | ---------------- |
-| Open-loop DAC    | writeDACplusread |
-| External control | readDACtoCAR     |
-| Embedded control | PIDfirst         |
+* Right / Left → change delta
+* Space → reset
+* Up / Down → adjust step
 
 ---
 
-### 3. Safety Constraints
+### Use Case
 
-All files enforce:
-
-* Voltage limits
-* Delta saturation
-* Safe startup (idle output)
+* Quick actuator testing
+* Open-loop experiments
 
 ---
 
-## Recommended Workflow
+## 2. PIDcommanfd.py
 
-1. Start with `writeDACplusread.ino`
+### Purpose
 
-   * Validate hardware and DAC behavior
-
-2. Move to `readDACtoCAR.ino`
-
-   * Test control from Python / PC
-
-3. Deploy `PIDfirst.ino`
-
-   * Run fully embedded control
-
-Skipping this order is how people end up chasing ghosts in their system.
+Main **control interface + logger**.
 
 ---
 
-## Final Notes
+### Features
 
-* Always measure **real DAC VDD** and update constants
-* Tune PID gains gradually (start with Kp only)
-* Watch for encoder noise (invalid transitions counter helps)
-* Log everything — your future self will thank you
+* Real-time target control
+* Live telemetry display
+* CSV logging
+* PID enable/disable
 
 ---
 
-If you want, I can also:
+### Controls
 
-* Help you tune the PID step-by-step
-* Build a Python script for plotting/logging
-* Or refactor this into a cleaner modular architecture
+* Right / Left → change target angle
+* Space → reset target
+* E / D → enable/disable PID
+* Z → zero encoder
 
-Just say the word.
+---
+
+### Output
+
+Creates log file:
+
+```
+pid_log_<timestamp>.csv
+```
+
+Contains:
+
+* Target / measured angle
+* Error
+* DAC outputs
+* PID terms
+* Encoder diagnostics
+
+---
+
+## 3. pid_post_analysis.py
+
+### Purpose
+
+Offline **data analysis and visualization**.
+
+---
+
+### Usage
+
+```
+python pid_post_analysis.py log.csv
+```
+
+---
+
+### Outputs
+
+#### Metrics
+
+* Mean absolute error
+* RMS error
+* Steady-state error
+* Overshoot
+
+---
+
+#### Plots
+
+* Target vs measured
+* Error
+* PID terms
+* DAC voltages
+* Speed estimation
+* Encoder diagnostics
+* Step response
+
+---
+
+#### Processed Data
+
+Creates:
+
+```
+processed_<log>.csv
+```
+
+---
+
+# Recommended Workflow
+
+### Step 1 — Hardware Bring-up
+
+Use:
+
+* `writeDACplusread.ino`
+
+Goal: verify DAC and wiring
+
+---
+
+### Step 2 — Open-loop Testing
+
+Use:
+
+* `DACtoCAR.py`
+* `readDACtoCAR.ino`
+
+Goal: understand system response
+
+---
+
+### Step 3 — Closed-loop Control
+
+Use:
+
+* `PIDfirst.ino`
+* `PIDcommanfd.py`
+
+Goal: control steering angle
+
+---
+
+### Step 4 — Analysis
+
+Use:
+
+* `pid_post_analysis.py`
+
+Goal: evaluate performance and tune PID
+
+---
+
+# Wiring (Arduino Connections)
+
+Below is the typical wiring reference for the system.
+
+## MCP4728 DAC
+
+| Signal | Arduino Pin    |
+| ------ | -------------- |
+| VCC    | 5V             |
+| GND    | GND            |
+| SDA    | A4 (UNO) / SDA |
+| SCL    | A5 (UNO) / SCL |
+
+---
+
+## Encoder
+
+| Signal    | Arduino Pin    |
+| --------- | -------------- |
+| Channel A | D2 (interrupt) |
+| Channel B | D3 (interrupt) |
+| VCC       | 5V             |
+| GND       | GND            |
+
+---
+
+## Actuator / Output
+
+| Signal        | Description      |
+| ------------- | ---------------- |
+| VA (DAC CH A) | Positive control |
+| VB (DAC CH B) | Negative control |
+
+---
+
+## Serial
+
+| Signal | Description               |
+| ------ | ------------------------- |
+| USB    | Communication with Python |
+
+---
+
+# Schematic
+
+![Image](https://europe1.discourse-cdn.com/arduino/original/4X/5/d/9/5d9dd63a3ccecd8f356be2245d1e0803f618c5b3.jpeg)
+
+![Image](https://europe1.discourse-cdn.com/arduino/original/4X/5/e/8/5e8a3d1c5619ed3563c6e3b536707b47b01aceeb.png)
+
+![Image](https://forum.electro-smith.com/uploads/default/original/2X/1/1d85a80467cf92839d2388045ddbed7c0ca1fc0c.png)
+
+![Image](https://abacasstorageaccnt.blob.core.windows.net/cirkit/6c152756-92ce-4e4c-9b2c-4a6de241f3f7.png)
+
+```
+![System Schematic](schematic.png)
+```
+---
