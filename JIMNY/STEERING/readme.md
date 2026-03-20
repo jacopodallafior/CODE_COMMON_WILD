@@ -374,15 +374,7 @@ Below is the typical wiring reference for the system.
 
 # Schematic
 
-![Image](https://europe1.discourse-cdn.com/arduino/original/4X/5/d/9/5d9dd63a3ccecd8f356be2245d1e0803f618c5b3.jpeg)
-
-![Image](https://europe1.discourse-cdn.com/arduino/original/4X/5/e/8/5e8a3d1c5619ed3563c6e3b536707b47b01aceeb.png)
-
-![Image](https://forum.electro-smith.com/uploads/default/original/2X/1/1d85a80467cf92839d2388045ddbed7c0ca1fc0c.png)
-
-![Image](https://abacasstorageaccnt.blob.core.windows.net/cirkit/6c152756-92ce-4e4c-9b2c-4a6de241f3f7.png)
-
 ```
-![System Schematic](schematic.png)
+![System Schematic](schematic.jpg)
 ```
 ---
