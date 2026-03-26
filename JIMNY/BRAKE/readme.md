@@ -36,7 +36,7 @@ In the full system the motor is commanded over CAN bus by a central vehicle cont
 
 The motor bracket was designed in CAD and 3D-printed in PLA. It is an L-shaped enclosure with triangular gussets for rigidity, a circular through-hole on the front face sized for the motor shaft and coupling, four M-bolt holes for the motor face, and two mounting ears at the top for attachment to the vehicle structure.
 
-![CAD render of motor mount bracket](Screenshot_2026-03-26_114009.png)
+![CAD render of motor mount bracket](Screenshot.png)
 
 The design intent is to hold the motor body rigidly perpendicular to the brake column axis so the cable drum on the shaft pulls in-line with the cable run.
 
