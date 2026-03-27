@@ -13,9 +13,11 @@ This repository documents the design, hardware setup, wiring, and test software 
 - [Driver Configuration (DIP switches)](#driver-configuration-dip-switches)
 - [Repository Structure](#repository-structure)
 - [Arduino — steerbok.ino](#arduino--steerbokino)
-- [Arduino — brake_test.ino](#arduino--brake_testino)
-- [Python — brake_gui.py](#python--brake_guipy)
+- [Arduino — brake_test_v2.ino](#arduino--brake_test_v2ino)
+- [Python — brake_gui_v2.py](#python--brake_gui_v2py)
 - [Python — brake_control.py](#python--brake_controlpy)
+- [Speed and Acceleration Reference](#speed-and-acceleration-reference)
+- [Torque Feedback Options](#torque-feedback-options)
 - [Test Procedure](#test-procedure)
 - [Known Issues and Future Work](#known-issues-and-future-work)
 - [Dependencies](#dependencies)
@@ -26,7 +28,7 @@ This repository documents the design, hardware setup, wiring, and test software 
 
 The actuator is installed inside the vehicle footwell and couples directly to the brake pedal column via a cable-and-drum mechanism. The stepper motor holds a position proportional to the requested braking force — stepper holding torque translates directly to a sustained force on the brake cable. The system is designed to be back-drivable: when the motor is de-energised the pedal returns freely.
 
-In the full system the motor is commanded over CAN bus by a central vehicle controller (the Steerbok board). A separate test interface (`brake_test.ino` + `brake_gui.py`) allows direct bench testing via USB Serial without needing the CAN network.
+In the full system the motor is commanded over CAN bus by a central vehicle controller (the Steerbok board). A separate test interface (`brake_test_v2.ino` + `brake_gui_v2.py`) allows direct bench testing via USB Serial without needing the CAN network. All key parameters (speed, acceleration, max travel, home origin) are configurable at runtime — no reupload needed.
 
 ---
 
@@ -54,9 +56,9 @@ The motor phase wires (red, green, yellow, blue) are visible routing away from t
 
 ### Coupling and cable
 
-The coupling is 3D-printed and serves as both the shaft adapter and the cable drum. The cable wraps around the drum outer diameter and the braking travel of ~0.73 motor revolutions corresponds to the full useful cable pull range.
+The coupling is 3D-printed and serves as both the shaft adapter and the cable drum. The cable wraps around the drum outer diameter. The braking travel is configurable in software (default 0.80 motor revolutions) and corresponds to the full useful cable pull range.
 
-> **Note from previous intern:** The end-bit (the final cable termination component) needs to be reprinted in a more durable material, or machined, to withstand the forces involved. The coupling also needs a minor revision — the NEMA-34 unit received differs from the original spec sheet in that it has two flat sides on the cylindrical shaft (D-cut). This is actually better for grip but the coupling bore needs to match this geometry exactly.
+> **Note from previous intern:** The end-bit (the final cable termination component) needs to be reprinted in a more durable material, or machined, to withstand the forces involved. The coupling also needs a minor revision — the NEMA-34 unit received differs from the original spec sheet in that it has two flat sides on the cylindrical shaft (D-cut). This is better for grip but the coupling bore needs to match this geometry exactly.
 
 ---
 
@@ -152,7 +154,7 @@ The DQ860HA has 8 DIP switches. Set these **before** powering on.
 | OFF | OFF | ON | ON | 3200 |
 | ON | ON | OFF | ON | 6400 |
 
-> The `MICROSTEPS` constant in `brake_test.ino` must match the hardware setting exactly. Default in code: `1600`.
+> The `MICROSTEPS` constant in `brake_test_v2.ino` must match the hardware setting exactly. Default in code: `1600`.
 
 **Recommended test configuration:**
 ```
@@ -168,16 +170,16 @@ SW5=ON   SW6=OFF  SW7=ON   SW8=ON  → 1600 steps/rev
 ```
 .
 ├── steerbok/
-│   └── steerbok.ino          # Production CAN-bus steering + brake controller
+│   └── steerbok.ino            # Production CAN-bus steering + brake controller
 ├── brake_test/
-│   ├── brake_test.ino        # Standalone brake test — Serial commands
-│   ├── brake_gui.py          # Python GUI (tkinter) for brake test
-│   └── brake_control.py      # Python CLI alternative
+│   ├── brake_test_v2.ino       # Scalable brake test — all params runtime-configurable
+│   ├── brake_gui_v2.py         # Python GUI with jog, home, config panel
+│   └── brake_control.py        # Python CLI alternative
 ├── cad/
-│   └── Screenshot_2026-03-26_114009.png   # CAD render of motor mount
+│   └── Screenshot.png          # CAD render of motor mount bracket
 ├── photos/
-│   ├── motormount1.jpeg      # Full footwell installation
-│   └── motormount2.jpeg      # Close-up of coupling and cable
+│   ├── motormount1.jpeg        # Full footwell installation
+│   └── motormount2.jpeg        # Close-up of coupling and cable
 └── README.md
 ```
 
@@ -213,26 +215,42 @@ const int maxStepperSpeed = 800; // steps/sec
 
 ---
 
-## Arduino — brake_test.ino
+## Arduino — brake_test_v2.ino
 
-Standalone test sketch. No CAN required. Receives commands over USB Serial at 115200 baud and moves the stepper to a proportional position, holding it (position hold = braking force).
+Standalone scalable test sketch. No CAN required. All motion parameters are configurable at runtime via Serial — no reupload needed to change speed, acceleration, max travel, or home origin.
+
+Receives commands over USB Serial at 115200 baud. Moves the stepper to a proportional target position and holds it. Holding position = braking force.
 
 **Serial commands:**
 
-| Command | Effect |
-|---|---|
-| `B:0` to `B:100` | Set braking force as percentage of max travel |
-| `H` | Home — drive back to position 0, stay energised |
-| `OFF` | Disable motor coils — shaft goes free |
-| `POS` | Query current step position |
+| Command | Example | Effect |
+|---|---|---|
+| `B:0`–`B:100` | `B:50` | Brake to % of max travel, hold position |
+| `H` | `H` | Drive back to home (position 0), stay energised |
+| `SETHOME` | `SETHOME` | Declare current position as origin (step 0) |
+| `OFF` | `OFF` | Disable motor coils — shaft goes free |
+| `JOG:+N` / `JOG:-N` | `JOG:+50` | Relative move N steps — for finding home |
+| `SPEED:N` | `SPEED:300` | Set max speed in steps/sec |
+| `ACCEL:N` | `ACCEL:200` | Set acceleration in steps/sec² |
+| `TURNS:N` | `TURNS:0.85` | Set max travel in motor revolutions |
+| `CONFIG` | `CONFIG` | Print all current settings |
+| `POS` | `POS` | Print current step position |
 
-**Key constants:**
+**Default runtime config (all changeable without reupload):**
 
 ```cpp
-const int   MICROSTEPS   = 1600;  // must match DIP switch
-const float MAX_TURNS    = 0.73;  // maximum cable pull in motor revolutions
-const float MAX_SPEED    = 600.0; // steps/sec
-const float ACCELERATION = 400.0; // steps/sec²
+float cfgMaxTurns = 0.80;   // motor revolutions = full brake travel
+float cfgMaxSpeed = 600.0;  // steps/sec
+float cfgAccel    = 400.0;  // steps/sec²
+```
+
+**Fixed hardware config (requires reupload to change):**
+
+```cpp
+const int MICROSTEPS = 1600; // must match DIP switch SW5–SW8
+const int PUL_PIN    = 5;
+const int DIR_PIN    = 4;
+const int ENA_PIN    = 3;
 ```
 
 **Feedback:** Every 200ms the sketch prints:
@@ -244,36 +262,47 @@ POS:584 PCT:50.0 TARGET:584
 
 ---
 
-## Python — brake_gui.py
+## Python — brake_gui_v2.py
 
-Graphical interface for `brake_test.ino`. Requires Python 3 and `pyserial`.
+Graphical interface for `brake_test_v2.ino`. Requires Python 3 and `pyserial`.
 
 ```bash
 pip install pyserial
-python brake_gui.py
+python brake_gui_v2.py
 ```
 
 **Features:**
+
 - Auto-detects serial ports, manual refresh
-- Slider (0–100%) for continuous adjustment
-- Preset buttons: 0%, 25%, 50%, 75%, 100%
-- APPLY BRAKE button sends current slider value
-- HOME button — drives motor back to zero
-- DISABLE button — cuts motor current
-- Live serial log with colour-coded output
+- Slider (0–100%) with preset buttons (0 / 25 / 50 / 75 / 100%)
+- APPLY BRAKE sends current slider value
+- HOME — drives motor back to zero
+- DISABLE — cuts motor current
+- **Config panel** — set Speed, Accel, Turns in text fields, send all in one click
+- **Jog panel** — JOG + / JOG − buttons with configurable step size for manual positioning
+- **SET HOME HERE** — declares current position as origin after jogging to the desired zero
+- Auto-requests CONFIG from Arduino on connect — shows current settings immediately in log
+- Live serial log with colour-coded output (commands in yellow, position in grey, info in green, errors in red)
 - On window close, automatically sends HOME then disconnects
 
 **Optional port argument:**
 ```bash
-python brake_gui.py --port COM3        # Windows
-python brake_gui.py --port /dev/ttyACM0  # Linux/Mac
+python brake_gui_v2.py --port COM3          # Windows
+python brake_gui_v2.py --port /dev/ttyACM0  # Linux/Mac
 ```
+
+### Setting home origin workflow
+
+1. Power on — motor enables at its power-up position
+2. Use **JOG −** / **JOG +** to inch the shaft to the physical zero point (cable slack, pedal at rest)
+3. Click **★ SET HOME HERE** — that position becomes step 0
+4. `B:100` will now travel exactly `TURNS` revolutions from that origin
 
 ---
 
 ## Python — brake_control.py
 
-CLI alternative to the GUI. Useful for scripted testing or when a display is not available.
+CLI alternative. Useful for scripted testing or headless environments.
 
 ```bash
 python brake_control.py --port COM3
@@ -290,29 +319,70 @@ At the `>` prompt:
 
 ---
 
+## Speed and Acceleration Reference
+
+Speed and acceleration are set via the GUI config panel or sent directly as `SPEED:N` / `ACCEL:N` — no reupload needed.
+
+| Use case | Speed (steps/sec) | Accel (steps/sec²) | Full travel time |
+|---|---|---|---|
+| Slow / safe first test | 200 | 150 | ~6 sec |
+| Normal controlled braking | 300 | 200 | ~4 sec |
+| Default (code default) | 600 | 400 | ~2 sec |
+| Fast emergency braking | 1280 | 800 | ~1 sec |
+
+> **For ~1 second full travel:** `SPEED:1280` `ACCEL:800`
+> At 1600 steps/rev × 0.80 turns = 1280 steps. The motor needs at least 640 steps/sec² acceleration to reach top speed within that distance — 800 gives comfortable headroom.
+
+**Notes on fast settings:**
+- At 1280 steps/sec the motor decelerates hard at the end of travel. The 3D-printed coupling and end-bit take a real impact. Test at `B:50` first before running `B:100` at high speed.
+- The EVEPS converter handles the transient current demand at high speed fine for single moves, but watch converter temperature during repeated fast cycles.
+- For normal operational use 300/200 is a better balance — smooth, controllable, and easy on the mechanical parts.
+
+---
+
+## Torque Feedback Options
+
+The stepper motor has no built-in torque sensing. Options in increasing order of quality:
+
+**Estimated torque (no extra hardware)**
+At 4.6A RMS (conservative DIP setting) the motor produces approximately `7.7 × (4.6 / 5.6) ≈ 6.3 Nm`. Multiply by the drum radius to get cable force. This is open-loop — useful for a ballpark but not feedback.
+
+**Inline load cell on the brake cable (recommended)**
+A small tension load cell (0–500N range) in series with the cable gives actual cable force in Newtons. Pair with an HX711 amplifier module connected to two Arduino analog pins. Cheap (~R200–300), direct, and easy to add without modifying the motor or driver. This is the right long-term solution.
+
+**Brake pressure sensor from vehicle CAN**
+The vehicle likely has a brake line pressure sensor readable on CAN. If accessible, this gives actual hydraulic pressure which is the most meaningful feedback of all. Worth investigating for the next development cycle.
+
+**Current sensing on motor phases (not recommended)**
+The DQ860HA does not expose a current feedback pin. Adding a shunt resistor on a phase wire is possible but the signal is noisy and the torque-current relationship in a stepper is nonlinear. Not worth the effort when a load cell is simpler.
+
+---
+
 ## Test Procedure
 
 ### Before connecting anything
 
 - [ ] DIP switches set correctly (power must be off to change them)
-- [ ] Motor has at least 0.73 turns of free mechanical travel
-- [ ] All wiring complete, GND bus connected
+- [ ] Motor has free mechanical travel for the configured `TURNS` value
+- [ ] All wiring complete, GND bus connected (5-way terminal block)
 - [ ] No loose wires near motor body or driver heatsink
 
 ### Connect sequence
 
 1. Plug Arduino USB into laptop
-2. Upload `brake_test.ino`, confirm success
-3. Run `python brake_gui.py`, connect to port — log shows `BRAKE TEST READY`
+2. Upload `brake_test_v2.ino`, confirm success
+3. Run `python brake_gui_v2.py`, select port, click CONNECT — log shows current CONFIG
 4. Connect 12V battery (or start engine) — driver PWR LED lights green
-5. In GUI: press `0%` preset then `APPLY` — motor clicks on and holds
-6. Test at 25%, 50%, 75%, 100% — verify smooth movement and position hold
+5. Jog to physical zero if needed, click SET HOME HERE
+6. Send config if changing speed/accel/turns from defaults
+7. Press `0%` preset → APPLY BRAKE — motor clicks on and holds
+8. Test at 25%, 50%, 75%, 100% — verify smooth movement and position hold
 
 ### Disconnect sequence
 
 1. Click HOME — wait for `POS:0` in log
 2. Click DISABLE — motor coils cut
-3. Disconnect battery / turn off engine
+3. Disconnect 12V battery / turn off engine
 4. Close GUI window
 5. Unplug Arduino USB
 6. Remove wiring: motor wires first, then signal wires, then GND block, then power wires
@@ -325,11 +395,11 @@ At the `>` prompt:
 
 | Item | Priority | Notes |
 |---|---|---|
-| End-bit durability | High | Current 3D-printed end-bit is not strong enough for sustained braking forces. Needs reprinting in PETG/Nylon or machining from aluminium. |
-| Coupling geometry | High | Coupling bore must be updated to match the D-cut (two flat sides) shaft profile of the received NEMA-34 unit. Original design assumed a fully cylindrical shaft. |
-| Relay integration | Medium | Relay on Steerbok board switches the 12V supply to the DC-DC converter. Not used in test mode — re-integrate for production deployment. |
-| Closed-loop position | Medium | No encoder on motor shaft. Consider adding encoder or load cell feedback for force-controlled (rather than position-controlled) braking. |
-| Homing routine | Low | On power-up the motor assumes position 0. A physical endstop or back-drive detection would make homing reliable after a reset. |
+| End-bit durability | High | Current 3D-printed end-bit is not strong enough for sustained braking forces. Reprint in PETG/Nylon or machine from aluminium. |
+| Coupling geometry | High | Coupling bore must be updated to match the D-cut (two flat sides) shaft profile. Original design assumed a fully cylindrical shaft. |
+| Load cell feedback | High | No force feedback currently. Inline load cell on brake cable recommended for closed-loop force control. |
+| Relay integration | Medium | Relay on Steerbok switches the 12V supply to the DC-DC converter. Not used in test mode — re-integrate for production. |
+| Homing routine | Medium | On power-up the motor assumes position 0. A physical endstop or back-drive detection would make homing reliable after a power cycle without manual jogging. |
 | Wire management | Low | Motor phase wires currently unrestrained in footwell. Need loom and strain relief before road testing. |
 
 ---
@@ -352,7 +422,8 @@ Install via Arduino IDE Library Manager or PlatformIO.
 
 ```
 pyserial >= 3.5
-tkinter  — included in standard Python on Windows/Mac; on Linux: sudo apt install python3-tk
+tkinter  — included in standard Python on Windows/Mac
+         — on Linux: sudo apt install python3-tk
 ```
 
 ---
