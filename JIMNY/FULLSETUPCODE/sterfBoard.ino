@@ -39,7 +39,7 @@ float steeringAngleFeedback = 0;
 enum HbSignal  { DISARMED = 0, VALID_ARMED = 1, INVALID_ARMED = 2 };
 enum Mode      { MANUAL = 0, AUTO = 1, EMERGENCY = 2 };
 
-// #define DEBUG_ENABLED
+#define DEBUG_ENABLED
 #ifdef DEBUG_ENABLED
   #define Debug Serial
 #else
