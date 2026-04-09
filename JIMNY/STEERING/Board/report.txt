@@ -1,0 +1,36 @@
+Info: Elaborazione simbolo "A1:Module:Arduino_Nano".
+Info: Elaborazione simbolo "C6:Capacitor_THT:CP_Radial_D8.0mm_P3.50mm".
+Info: Elaborazione simbolo "C7:Capacitor_THT:C_Rect_L4.6mm_W2.0mm_P2.50mm_MKS02_FKP02".
+Info: Elaborazione simbolo "C8:Capacitor_THT:C_Rect_L4.6mm_W2.0mm_P2.50mm_MKS02_FKP02".
+Info: Elaborazione simbolo "C9:Capacitor_THT:C_Rect_L4.6mm_W2.0mm_P2.50mm_MKS02_FKP02".
+Info: Elaborazione simbolo "D1:Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "D2:LED_THT:LED_D5.0mm".
+Info: Elaborazione simbolo "D3:Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "D4:LED_THT:LED_D5.0mm".
+Info: Elaborazione simbolo "D9:LED_THT:LED_D5.0mm".
+Info: Elaborazione simbolo "D10:LED_THT:LED_D5.0mm".
+Info: Elaborazione simbolo "D14:LED_THT:LED_D5.0mm".
+Info: Elaborazione simbolo "J1:custom:TerminalBlock_Phoenix_MKDS-1,5-4_1x04_P5.00mm_Horizontal".
+Info: Elaborazione simbolo "J3:custom:TerminalBlock_Phoenix_MKDS-1,5-4_1x04_P5.00mm_Horizontal".
+Info: Elaborazione simbolo "J4:custom:TerminalBlock_Phoenix_MKDS-1,5-4_1x04_P5.00mm_Horizontal".
+Info: Elaborazione simbolo "J7:Connector_RJ:RJ45_OST_PJ012-8P8CX_Vertical".
+Info: Elaborazione simbolo "J13:Connector_RJ:RJ45_OST_PJ012-8P8CX_Vertical".
+Info: Elaborazione simbolo "K1:Relay_THT:Relay_SPDT_SANYOU_SRD_Series_Form_C".
+Info: Elaborazione simbolo "K2:Relay_THT:Relay_SPDT_SANYOU_SRD_Series_Form_C".
+Info: Elaborazione simbolo "Q1:Package_TO_SOT_THT:TO-92_Inline".
+Info: Elaborazione simbolo "Q2:Package_TO_SOT_THT:TO-92_Inline".
+Info: Elaborazione simbolo "R1:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R2:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R3:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R4:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R5:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R6:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R13:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal".
+Info: Elaborazione simbolo "R30:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal".
+Info: Elaborazione simbolo "R34:Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal".
+Info: Elaborazione simbolo "U2:Package_SO:MSOP-10_3x3mm_P0.5mm".
+Info: Elaborazione simbolo "U5:custom:MCP2515".
+Attenzione: Zona rame su strato tutti gli strati rame in (274,0000 mm, 32,5000 mm) senza piazzole connesse al collegamento "".
+
+
+Info: Totale avvisi: 1, errori: 0.
