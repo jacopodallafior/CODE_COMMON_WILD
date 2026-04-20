@@ -70,6 +70,7 @@ void floatToBytes(float value, uint8_t* bytes);
 void updateBoardAliveFlags(unsigned long now);
 bool anyCriticalBoardMissing();
 void sendSerialFeedbackToJetson();
+void handleSerialInput(unsigned long now);
 
 void setup() {
   Serial.begin(115200);
@@ -106,28 +107,8 @@ void loop() {
       lastHeartbeatTime = now;
     }
   }
-  else if (digitalRead(autoButton) == LOW) {
-    if (digitalRead(relay48v) == HIGH) {
-      sendHeartbeatMessage(MANUAL);
-      lastHeartbeatTime = now;
-      digitalWrite(relay48v, LOW);
-    } else if (now - lastHeartbeatTime >= heartbeatInterval) {
-      sendHeartbeatMessage(MANUAL);
-      lastHeartbeatTime = now;
-    }
-  }
   else {
-    if (Serial.available() > 0) {
-      String inputData = Serial.readStringUntil('>');
-      inputData.remove(0, 1);
-      if (inputData.startsWith("H")) {
-        hbSignal = inputData.substring(2).toInt();
-        lastSerialHeartbeatTime = now;
-        serialHeartbeatReceived = true;
-      } else {
-        parseSerialData(inputData);
-      }
-    }
+    handleSerialInput(now);
 
     if (now - lastSerialHeartbeatTime >= 2 * heartbeatInterval)
       serialHeartbeatReceived = false;
@@ -161,6 +142,28 @@ void loop() {
     }
 
     led_maintenance();
+  }
+}
+
+void handleSerialInput(unsigned long now) {
+  if (Serial.available() <= 0) return;
+
+  String inputData = Serial.readStringUntil('\n');
+  inputData.trim();
+
+  if (inputData.length() == 0) return;
+  if (inputData[0] != '<') return;
+  if (inputData[inputData.length() - 1] != '>') return;
+
+  inputData.remove(0, 1);
+  inputData.remove(inputData.length() - 1, 1);
+
+  if (inputData.startsWith("H,")) {
+    hbSignal = inputData.substring(2).toInt();
+    lastSerialHeartbeatTime = now;
+    serialHeartbeatReceived = true;
+  } else {
+    parseSerialData(inputData);
   }
 }
 
