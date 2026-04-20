@@ -99,7 +99,7 @@ void loop() {
     else if (canMsg.can_id == CAN_VELOCITY_TARGET) {  // 0x120
       float rv, ra;
       memcpy(&rv, canMsg.data,     4);
-      memcpy(&ra, canMsg.data, 4);
+      memcpy(&ra, canMsg.data + 4, 4);
       targetVelocity     = rv;
       targetAcceleration = ra;
     }
