@@ -16,7 +16,7 @@ MCP2515 mcp2515(10);
 struct can_frame canMsg;
 AccelStepper stepper(AccelStepper::DRIVER, PUL_PIN, DIR_PIN);
 
-float  cfgMaxTurns = 0.80;
+float  cfgMaxTurns = 0.40;
 float  cfgMaxSpeed = 600.0;
 float  cfgAccel    = 400.0;
 long   maxSteps    = 0;
