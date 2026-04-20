@@ -130,6 +130,12 @@ void loop() {
         default:            checkedMode = MANUAL;    break;
       }
 
+      // NEW: command timeout -> EMERGENCY
+      if (checkedMode == AUTO && noAckReceived) {
+        checkedMode = EMERGENCY;
+        Debug.println("FAULT: command timeout -> EMERGENCY");
+      }
+
       if (ENABLE_BOARD_FAULTS && checkedMode == AUTO && anyCriticalBoardMissing()) {
         checkedMode = EMERGENCY;
         Debug.println("FAULT: missing board feedback -> EMERGENCY");
