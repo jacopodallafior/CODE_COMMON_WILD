@@ -1,6 +1,6 @@
 #include <SPI.h>
 #include <mcp2515.h>
-#include "can_ids.h"          // ← added
+#include "can_ids.h"
 
 MCP2515 mcp2515(10);
 
@@ -15,10 +15,13 @@ unsigned long canLEDtime = 0;
 const int cubePWM     = A0;
 
 const uint32_t heartbeatInterval = 200;
-unsigned long nowMS              = millis();
-unsigned long lastHeartbeatTime  = 0;
+const bool ENABLE_BOARD_FAULTS   = true;
+const uint8_t BOARD_TIMEOUT_MULT = 2;
+
+unsigned long nowMS                   = millis();
+unsigned long lastHeartbeatTime       = 0;
 unsigned long lastSerialHeartbeatTime = nowMS;
-bool serialHeartbeatReceived = false;
+bool serialHeartbeatReceived          = false;
 
 bool ackSignalInvalid = true;
 unsigned long lastAckTime  = nowMS;
@@ -29,12 +32,24 @@ int hbSignal = 0;
 unsigned long lastCanSig      = nowMS;
 const unsigned long canLEDDur = 50;
 
-float steeringAngle, steeringAngleVelocity, velocity, 
+float steeringAngle, steeringAngleVelocity, velocity,
       acceleration, jerk, gpsVelocity;
-float velocitySetpoint    = 0;
-float velocityFeedback    = 0;
-float steeringRateSetPoint  = 0;
-float steeringAngleFeedback = 0;
+
+float velocitySetpoint       = 0.0;
+float velocityFeedback       = 0.0;
+float steeringRateSetPoint   = 0.0;
+float steeringAngleFeedback  = 0.0;
+
+float brakePositionFeedback  = 0.0;
+float brakePctFeedback       = 0.0;
+
+unsigned long lastAxelBrakeFeedback = 0;
+unsigned long lastSteeringFeedback  = 0;
+unsigned long lastBrakeFeedback     = 0;
+
+bool axelBrakeAlive = false;
+bool steeringAlive  = false;
+bool brakeAlive     = false;
 
 enum HbSignal  { DISARMED = 0, VALID_ARMED = 1, INVALID_ARMED = 2 };
 enum Mode      { MANUAL = 0, AUTO = 1, EMERGENCY = 2 };
@@ -45,6 +60,16 @@ enum Mode      { MANUAL = 0, AUTO = 1, EMERGENCY = 2 };
 #else
   #define Debug if (false) Serial
 #endif
+
+void sendHeartbeatMessage(int mode);
+void sendCANMessages();
+void checkCANMessages();
+void led_maintenance();
+void parseSerialData(String inputData);
+void floatToBytes(float value, uint8_t* bytes);
+void updateBoardAliveFlags(unsigned long now);
+bool anyCriticalBoardMissing();
+void sendSerialFeedbackToJetson();
 
 void setup() {
   Serial.begin(115200);
@@ -67,6 +92,9 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
+
+  checkCANMessages();
+  updateBoardAliveFlags(now);
 
   if (digitalRead(eButton) == LOW) {
     if (digitalRead(relay48v) == HIGH) {
@@ -100,22 +128,30 @@ void loop() {
         parseSerialData(inputData);
       }
     }
+
     if (now - lastSerialHeartbeatTime >= 2 * heartbeatInterval)
       serialHeartbeatReceived = false;
 
     now = millis();
+    updateBoardAliveFlags(now);
+
     if (now - lastHeartbeatTime >= heartbeatInterval) {
       if ((hbSignal == VALID_ARMED) && (now - lastAckTime > noAckTimeout))
         noAckReceived = true;
       else
         noAckReceived = false;
 
-      int checkedMode;
+      int checkedMode = MANUAL;
       switch (hbSignal) {
         case DISARMED:      checkedMode = MANUAL;    break;
         case VALID_ARMED:   checkedMode = AUTO;      break;
         case INVALID_ARMED: checkedMode = EMERGENCY; break;
-        default: break;
+        default:            checkedMode = MANUAL;    break;
+      }
+
+      if (ENABLE_BOARD_FAULTS && checkedMode == AUTO && anyCriticalBoardMissing()) {
+        checkedMode = EMERGENCY;
+        Debug.println("FAULT: missing board feedback -> EMERGENCY");
       }
 
       digitalWrite(relay48v, checkedMode == AUTO ? HIGH : LOW);
@@ -124,7 +160,6 @@ void loop() {
       sendCANMessages();
     }
 
-    checkCANMessages();
     led_maintenance();
   }
 }
@@ -132,25 +167,30 @@ void loop() {
 void parseSerialData(String inputData) {
   float values[6];
   int index = 0;
-  char* token = strtok(inputData.c_str(), ",");
+
+  char buffer[96];
+  inputData.toCharArray(buffer, sizeof(buffer));
+  char* token = strtok(buffer, ",");
+
   while (token != NULL && index < 6) {
     values[index++] = atof(token);
     token = strtok(NULL, ",");
   }
+
   if (index == 6) {
-    lastAckTime          = millis();
-    steeringAngle        = values[0];
+    lastAckTime           = millis();
+    steeringAngle         = values[0];
     steeringAngleVelocity = values[1];
-    velocity             = values[2];
-    acceleration         = values[3];
-    jerk                 = values[4];
-    gpsVelocity          = values[5];
+    velocity              = values[2];
+    acceleration          = values[3];
+    jerk                  = values[4];
+    gpsVelocity           = values[5];
   }
 }
 
 void sendHeartbeatMessage(int mode) {
   struct can_frame hb;
-  hb.can_id  = CAN_HB_STERFBOARD;   // ← was 0x01
+  hb.can_id  = CAN_HB_STERFBOARD;
   hb.can_dlc = 4;
   hb.data[0] = heartbeatInterval >> 8;
   hb.data[1] = heartbeatInterval & 0xFF;
@@ -158,6 +198,10 @@ void sendHeartbeatMessage(int mode) {
   hb.data[3] = 0x00;
   mcp2515.sendMessage(&hb);
 
+  sendSerialFeedbackToJetson();
+}
+
+void sendSerialFeedbackToJetson() {
   Serial.print("<");
   Serial.print(velocitySetpoint);     Serial.print(", ");
   Serial.print(velocityFeedback);     Serial.print(", ");
@@ -167,25 +211,22 @@ void sendHeartbeatMessage(int mode) {
 }
 
 void sendCANMessages() {
-  // Steering
   struct can_frame steeringMsg;
-  steeringMsg.can_id  = CAN_STEERING_TARGET;  // ← was 0x110
+  steeringMsg.can_id  = CAN_STEERING_TARGET;
   steeringMsg.can_dlc = 8;
   floatToBytes(steeringAngle,         steeringMsg.data);
   floatToBytes(steeringAngleVelocity, &steeringMsg.data[4]);
   mcp2515.sendMessage(&steeringMsg);
 
-  // Velocity + acceleration
   struct can_frame velocityMsg;
-  velocityMsg.can_id  = CAN_VELOCITY_TARGET;  // ← was 0x120
+  velocityMsg.can_id  = CAN_VELOCITY_TARGET;
   velocityMsg.can_dlc = 8;
   floatToBytes(velocity,     velocityMsg.data);
   floatToBytes(acceleration, &velocityMsg.data[4]);
   mcp2515.sendMessage(&velocityMsg);
 
-  // GPS velocity
   struct can_frame gpsMsg;
-  gpsMsg.can_id  = CAN_GPS_VELOCITY;          // ← was 0x121
+  gpsMsg.can_id  = CAN_GPS_VELOCITY;
   gpsMsg.can_dlc = 4;
   floatToBytes(gpsVelocity, gpsMsg.data);
   mcp2515.sendMessage(&gpsMsg);
@@ -199,19 +240,41 @@ void floatToBytes(float value, uint8_t* bytes) {
 
 void checkCANMessages() {
   struct can_frame msg;
-  if (mcp2515.readMessage(&msg) != MCP2515::ERROR_OK) return;
-  if (msg.can_dlc != 8) return;
 
-  if (msg.can_id == CAN_HB_AXELBRAKE) {         // ← was 0x12
-    digitalWrite(canLED, HIGH); lastCanSig = millis();
-    memcpy(&velocitySetpoint, &msg.data[0], 4);
-    memcpy(&velocityFeedback, &msg.data[4], 4);
+  while (mcp2515.readMessage(&msg) == MCP2515::ERROR_OK) {
+    if (msg.can_dlc != 8) continue;
+
+    digitalWrite(canLED, HIGH);
+    lastCanSig = millis();
+
+    if (msg.can_id == CAN_HB_AXELBRAKE) {
+      memcpy(&velocitySetpoint, &msg.data[0], 4);
+      memcpy(&velocityFeedback, &msg.data[4], 4);
+      lastAxelBrakeFeedback = lastCanSig;
+    }
+    else if (msg.can_id == CAN_HB_STEERING) {
+      memcpy(&steeringRateSetPoint,  &msg.data[0], 4);
+      memcpy(&steeringAngleFeedback, &msg.data[4], 4);
+      lastSteeringFeedback = lastCanSig;
+    }
+    else if (msg.can_id == CAN_HB_BRAKE) {
+      memcpy(&brakePositionFeedback, &msg.data[0], 4);
+      memcpy(&brakePctFeedback,      &msg.data[4], 4);
+      lastBrakeFeedback = lastCanSig;
+    }
   }
-  else if (msg.can_id == CAN_HB_STEERBOK) {     // ← was 0x11
-    digitalWrite(canLED, HIGH); lastCanSig = millis();
-    memcpy(&steeringRateSetPoint,    &msg.data[0], 4);
-    memcpy(&steeringAngleFeedback,   &msg.data[4], 4);
-  }
+}
+
+void updateBoardAliveFlags(unsigned long now) {
+  unsigned long timeoutMs = (unsigned long)heartbeatInterval * BOARD_TIMEOUT_MULT;
+
+  axelBrakeAlive = (now - lastAxelBrakeFeedback) <= timeoutMs;
+  steeringAlive  = (now - lastSteeringFeedback)  <= timeoutMs;
+  brakeAlive     = (now - lastBrakeFeedback)     <= timeoutMs;
+}
+
+bool anyCriticalBoardMissing() {
+  return (!axelBrakeAlive || !steeringAlive || !brakeAlive);
 }
 
 void led_maintenance() {
