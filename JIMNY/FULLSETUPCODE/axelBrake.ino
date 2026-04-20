@@ -1,10 +1,9 @@
 #include <SPI.h>
 #include <mcp2515.h>
 #include <ArduPID.h>
-#include "can_ids.h"          // ← added
+#include "can_ids.h"
 
 MCP2515 mcp2515(10);
-// Servo removed entirely
 
 const int accelPin  = 3;
 const int enablePin = 6;
@@ -17,9 +16,9 @@ const int maxPWM = 225;
 
 double P = 0.5, I = 1e-4, D = 1e-2;
 ArduPID pidController;
-double targetVelocity    = 0;
-double actualGPSVelocity = 0;
-double controlOutput     = 0;
+double targetVelocity     = 0;
+double actualGPSVelocity  = 0;
+double controlOutput      = 0;
 double targetAcceleration = 0;
 double actualAcceleration = 0;
 
@@ -30,15 +29,21 @@ const unsigned long displayInterval = 700;
 unsigned long lastDisplayTime = millis();
 
 uint32_t heartbeatInterval   = 200;
-unsigned long nowMS           = millis();
-unsigned long lastHbReceived  = millis();
-unsigned long lastHbSent      = 0;
-bool receivedHeartbeat        = false;
+unsigned long nowMS          = millis();
+unsigned long lastHbReceived = millis();
+unsigned long lastHbSent     = 0;
+bool receivedHeartbeat       = false;
 
-unsigned long lastCanSig      = millis();
+unsigned long lastCanSig     = millis();
 const unsigned long canLEDDur = 50;
 
 int mode = 0;
+
+// NEW: brake CAN anti-spam
+float lastBrakePctSent = -999.0;
+unsigned long lastBrakeCanSent = 0;
+const unsigned long brakeCanMinInterval = 50;   // 20 Hz
+const float brakeCanMinDelta = 1.0;             // 1%
 
 // #define DEBUG_ENABLED
 #ifdef DEBUG_ENABLED
@@ -47,15 +52,28 @@ int mode = 0;
   #define Debug if (false) Serial
 #endif
 
-// ── Send brake % to stepper board ─────────────────────────────
 void sendBrakePct(float pct) {
   pct = constrain(pct, 0.0, 100.0);
+
+  unsigned long now = millis();
+  bool enoughTimePassed = (now - lastBrakeCanSent) >= brakeCanMinInterval;
+  bool enoughChange = fabs(pct - lastBrakePctSent) >= brakeCanMinDelta;
+
+  if (!enoughTimePassed && !enoughChange) {
+    return;
+  }
+
   struct can_frame brakeMsg;
-  brakeMsg.can_id  = CAN_BRAKE_PCT;   // 0x130
+  brakeMsg.can_id  = CAN_BRAKE_PCT;
   brakeMsg.can_dlc = 4;
   memcpy(brakeMsg.data, &pct, 4);
   mcp2515.sendMessage(&brakeMsg);
-  Debug.print("Brake CAN sent: "); Debug.println(pct, 1);
+
+  lastBrakePctSent = pct;
+  lastBrakeCanSent = now;
+
+  Debug.print("Brake CAN sent: ");
+  Debug.println(pct, 1);
 }
 
 void setup() {
@@ -68,7 +86,6 @@ void setup() {
   digitalWrite(enablePin, HIGH);
   analogWrite(accelPin, minPWM);
 
-  // Reset display
   digitalWrite(latchPin, LOW);
   shiftOut(dataPin, clockPin, LSBFIRST, standby);
   shiftOut(dataPin, clockPin, LSBFIRST, standby);
@@ -90,43 +107,39 @@ void loop() {
   struct can_frame canMsg;
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
 
-    if (canMsg.can_id == CAN_HB_STERFBOARD) {        // 0x01
+    if (canMsg.can_id == CAN_HB_STERFBOARD) {
       heartbeatInterval = (canMsg.data[0] << 8) | canMsg.data[1];
       mode              = canMsg.data[2];
       lastHbReceived    = millis();
-      Debug.print("Mode: "); Debug.println(mode);
+      Debug.print("Mode: ");
+      Debug.println(mode);
     }
-    else if (canMsg.can_id == CAN_VELOCITY_TARGET) {  // 0x120
+    else if (canMsg.can_id == CAN_VELOCITY_TARGET) {
       float rv, ra;
-      memcpy(&rv, canMsg.data,     4);
+      memcpy(&rv, canMsg.data, 4);
       memcpy(&ra, canMsg.data + 4, 4);
       targetVelocity     = rv;
       targetAcceleration = ra;
     }
-    else if (canMsg.can_id == CAN_GPS_VELOCITY) {     // 0x121
-      float rv, ra;
-      memcpy(&rv, canMsg.data,     4);
-      memcpy(&ra, canMsg.data, 4);
+    else if (canMsg.can_id == CAN_GPS_VELOCITY) {
+      float rv;
+      memcpy(&rv, canMsg.data, 4);
       actualGPSVelocity  = rv;
-      actualAcceleration = ra;
+      actualAcceleration = 0.0;
     }
   }
 
-  // ── Mode logic ───────────────────────────────────────────────
   if (!receivedHeartbeat || mode == 2) {
-    // Emergency: cut throttle, full brake
     digitalWrite(enablePin, HIGH);
     analogWrite(accelPin, minPWM);
     sendBrakePct(100.0);
     controlOutput = -99;
   }
   else if (mode == 0) {
-    // Manual: release everything
     digitalWrite(enablePin, LOW);
     sendBrakePct(0.0);
   }
   else {
-    // Auto: run PID
     digitalWrite(enablePin, HIGH);
 
     if (targetVelocity <= 0) {
@@ -140,20 +153,20 @@ void loop() {
       nowMS = millis();
 
       if (controlOutput >= 0) {
-        // Accelerate
         int pwmValue = map(controlOutput, 0, 100, minPWM, maxPWM);
         analogWrite(accelPin, pwmValue);
-        sendBrakePct(0.0);   // release brake
+        sendBrakePct(0.0);
+
         if (nowMS - lastDisplayTime > displayInterval) {
           displayNumber(abs(controlOutput), false);
           lastDisplayTime = millis();
         }
       }
       else {
-        // Brake — negative PID output → positive brake %
-        float brakePct = (float)(-controlOutput);  // 0-99
+        float brakePct = (float)(-controlOutput);
         analogWrite(accelPin, minPWM);
         sendBrakePct(brakePct);
+
         if (nowMS - lastDisplayTime > displayInterval) {
           displayNumber(abs(controlOutput), true);
           lastDisplayTime = millis();
@@ -162,18 +175,16 @@ void loop() {
     }
   }
 
-  // ── Heartbeat out ────────────────────────────────────────────
   byte data[8];
   float fo = (float)controlOutput;
   float fv = (float)actualGPSVelocity;
   memcpy(data,     &fo, 4);
   memcpy(data + 4, &fv, 4);
-  receivedHeartbeat = heartbeat(CAN_HB_AXELBRAKE, data, sizeof(data)); // 0x12
+  receivedHeartbeat = heartbeat(CAN_HB_AXELBRAKE, data, sizeof(data));
 
   led_maintenance();
 }
 
-// ── Display, heartbeat, LED functions unchanged ────────────────
 void displayNumber(int number, bool braking) {
   if (number == lastDisplayedNumber && braking == lastBrakingState) return;
   lastDisplayedNumber = number;
