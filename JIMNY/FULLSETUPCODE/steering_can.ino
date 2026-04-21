@@ -2,7 +2,7 @@
  * steering_can.ino
  *
  * Versione modificata:
- * encoder su D4 e D5 invece di A3 e A1
+ * encoder su D4 e D5 invece di A3(verde) e A1(bianco)
  */
 
 #include <Wire.h>
