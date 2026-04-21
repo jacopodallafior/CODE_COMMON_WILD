@@ -1,22 +1,8 @@
 /*
  * steering_can.ino
  *
- * Steering controller with CAN communication.
- * PID + DAC + encoder logic unchanged from tested version.
- * Added: MCP2515 CAN receive (0x110 target angle) + heartbeat out (0x14)
- * Mode gating: PID only runs in AUTO mode (mode==1)
- *
- * Pins:
- *   A3 (PC3) = encoder CLK
- *   A1 (PC1) = encoder DT
- *   SDA/SCL  = MCP4728 DAC (I2C)
- *   D10      = MCP2515 CS (SPI)
- *   D11-13   = SPI (shared with MCP2515)
- *
- * CAN IDs:
- *   0x01  IN  — Sterfboard heartbeat (mode)
- *   0x110 IN  — Target steering angle (float) + angle velocity (float)
- *   0x14  OUT — Heartbeat: float outputDelta + float measuredAngle
+ * Versione modificata:
+ * encoder su D4 e D5 invece di A3 e A1
  */
 
 #include <Wire.h>
@@ -27,10 +13,10 @@
 #include "can_ids.h"
 
 // =========================
-// ENCODER — unchanged
+// ENCODER
 // =========================
-const int clkPin = A3;
-const int dtPin  = A1;
+const int clkPin = 4;   // D4 = CHA
+const int dtPin  = 5;   // D5 = CHB
 
 volatile long counter = 0;
 volatile uint8_t lastState = 0;
@@ -42,14 +28,14 @@ double sprocketGearRatio = 2.5;
 bool encoderCwRight = false;
 
 // =========================
-// DAC — unchanged
+// DAC
 // =========================
 Adafruit_MCP4728 mcp;
 
-const float DAC_VDD    = 4.98;
-const int   DAC_MAX    = 4095;
-const float IDLE_A     = 2.5200;
-const float IDLE_B     = 2.4900;
+const float DAC_VDD     = 4.98;
+const int   DAC_MAX     = 4095;
+const float IDLE_A      = 2.5200;
+const float IDLE_B      = 2.4900;
 const float DELTA_LIMIT = 0.80;
 
 float CAL_A = 0.0000;
@@ -61,7 +47,7 @@ uint16_t lastCodeA = 0;
 uint16_t lastCodeB = 0;
 
 // =========================
-// PID — unchanged
+// PID
 // =========================
 float targetAngleDeg   = 0.0;
 float measuredAngleDeg = 0.0;
@@ -84,7 +70,7 @@ float lastDTerm    = 0.0;
 bool pidEnabled = false;
 
 // =========================
-// TIMING — unchanged
+// TIMING
 // =========================
 const unsigned long controlPeriodMs = 10;
 unsigned long lastControlMs = 0;
@@ -93,21 +79,18 @@ const unsigned long printIntervalMs = 50;
 unsigned long lastPrintMs = 0;
 
 // =========================
-// CAN — new
+// CAN
 // =========================
 MCP2515 mcp2515(10);
 struct can_frame canMsg;
 
-int      mode              = 0;
-uint32_t heartbeatInterval = 200;
+int      mode               = 0;
+uint32_t heartbeatInterval  = 200;
 unsigned long lastHbReceived = 0;
 unsigned long lastHbSent     = 0;
 
-unsigned long lastCanSig     = 0;
+unsigned long lastCanSig      = 0;
 const unsigned long CAN_LED_DUR = 50;
-
-// No dedicated CAN LED on this board — 
-// use Serial only for CAN debug
 
 // #define DEBUG_ENABLED
 #ifdef DEBUG_ENABLED
@@ -117,7 +100,7 @@ const unsigned long CAN_LED_DUR = 50;
 #endif
 
 // =========================
-// HELPERS — unchanged
+// HELPERS
 // =========================
 double getSteeringAngleDeg(long countsSnapshot) {
   double revs  = (double)countsSnapshot / (double)encoderCountsPerRev;
@@ -126,7 +109,7 @@ double getSteeringAngleDeg(long countsSnapshot) {
 }
 
 uint16_t voltToCode(float v) {
-  if (v < 0.0)    v = 0.0;
+  if (v < 0.0) v = 0.0;
   if (v > DAC_VDD) v = DAC_VDD;
   return (uint16_t)((v / DAC_VDD) * DAC_MAX + 0.5);
 }
@@ -174,25 +157,25 @@ void setup() {
   Serial.begin(115200);
   delay(300);
 
-  // Encoder
   pinMode(clkPin, INPUT_PULLUP);
   pinMode(dtPin,  INPUT_PULLUP);
+
   lastState = (digitalRead(clkPin) << 1) | digitalRead(dtPin);
+
   enableInterrupt(clkPin, handleEncoder, CHANGE);
   enableInterrupt(dtPin,  handleEncoder, CHANGE);
 
-  // DAC
   Wire.begin();
   Wire.setClock(400000);
   if (!mcp.begin()) {
     Serial.println("ERR,MCP4728_NOT_FOUND");
     while (1) {}
   }
+
   measuredAngleDeg = getSteeringAngleDeg(0);
   prevAngleDeg     = measuredAngleDeg;
   applyDelta(0.0);
 
-  // CAN
   mcp2515.reset();
   mcp2515.setBitrate(CAN_500KBPS, MCP_8MHZ);
   mcp2515.setNormalMode();
@@ -211,46 +194,37 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // ── CAN receive ─────────────────────────────────────────
   if (mcp2515.readMessage(&canMsg) == MCP2515::ERROR_OK) {
-
-    if (canMsg.can_id == CAN_HB_STERFBOARD) {          // 0x01
+    if (canMsg.can_id == CAN_HB_STERFBOARD) {
       heartbeatInterval = (canMsg.data[0] << 8) | canMsg.data[1];
       mode              = canMsg.data[2];
       lastHbReceived    = now;
       Debug.print("Mode: "); Debug.println(mode);
 
       if (mode == 1 && !pidEnabled) {
-        // AUTO: enable PID, reset integrator to avoid windup spike
         resetPID();
         pidEnabled = true;
         Serial.println("INFO,CAN_AUTO_PID_ENABLED");
       }
       else if (mode != 1 && pidEnabled) {
-        // MANUAL or EMERGENCY: stop output
         pidEnabled = false;
         stopOutput();
         Serial.println("INFO,CAN_PID_DISABLED");
       }
     }
-    else if (canMsg.can_id == CAN_STEERING_TARGET) {   // 0x110
+    else if (canMsg.can_id == CAN_STEERING_TARGET) {
       float rxAngle, rxAngleVel;
       memcpy(&rxAngle,    canMsg.data,     4);
       memcpy(&rxAngleVel, canMsg.data + 4, 4);
-      // rxAngleVel available for feedforward if needed later
 
-      // Only update target if in AUTO mode
       if (mode == 1) {
-        // Reset integrator if big jump to avoid windup
-        if (abs(rxAngle - targetAngleDeg) > 5.0)
-          integralTerm = 0.0;
+        if (abs(rxAngle - targetAngleDeg) > 5.0) integralTerm = 0.0;
         targetAngleDeg = rxAngle;
         Debug.print("Target: "); Debug.println(targetAngleDeg, 2);
       }
     }
   }
 
-  // ── Watchdog: no heartbeat → safe stop ──────────────────
   if (now - lastHbReceived > heartbeatInterval * 2) {
     if (pidEnabled) {
       pidEnabled = false;
@@ -259,10 +233,9 @@ void loop() {
     }
   }
 
-  // ── CAN heartbeat out on 0x14 ────────────────────────────
   if (now - lastHbSent >= heartbeatInterval) {
     struct can_frame hb;
-    hb.can_id  = CAN_HB_STEERING;   // 0x14
+    hb.can_id  = CAN_HB_STEERING;
     hb.can_dlc = 8;
     float fDelta = deltaCmd;
     float fAngle = measuredAngleDeg;
@@ -272,24 +245,21 @@ void loop() {
     lastHbSent = now;
   }
 
-  // ── PID control loop — unchanged timing ─────────────────
   if (now - lastControlMs >= controlPeriodMs) {
     lastControlMs = now;
     runControl();
   }
 
-  // ── Serial print — unchanged ─────────────────────────────
   if (now - lastPrintMs >= printIntervalMs) {
     lastPrintMs = now;
     printDataLine();
   }
 
-  // ── Serial commands — unchanged ──────────────────────────
   handleSerial();
 }
 
 // =========================
-// PID CONTROL — unchanged
+// PID CONTROL
 // =========================
 void runControl() {
   long countsSnapshot;
@@ -327,11 +297,11 @@ void runControl() {
 }
 
 // =========================
-// ENCODER ISR — unchanged
+// ENCODER ISR
 // =========================
 void handleEncoder() {
-  uint8_t clkState = (PINC & (1 << PC3)) ? 1 : 0;
-  uint8_t dtState  = (PINC & (1 << PC1)) ? 1 : 0;
+  uint8_t clkState = digitalRead(clkPin);
+  uint8_t dtState  = digitalRead(dtPin);
   uint8_t newState = (clkState << 1) | dtState;
 
   switch ((lastState << 2) | newState) {
@@ -347,7 +317,7 @@ void handleEncoder() {
 }
 
 // =========================
-// SERIAL PRINT — unchanged
+// SERIAL PRINT
 // =========================
 void printDataLine() {
   long c; unsigned long isr, inv;
@@ -372,7 +342,7 @@ void printDataLine() {
 }
 
 // =========================
-// SERIAL COMMANDS — unchanged
+// SERIAL COMMANDS
 // =========================
 void handleSerial() {
   if (!Serial.available()) return;
