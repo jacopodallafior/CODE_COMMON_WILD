@@ -26,9 +26,30 @@ ssh user@192.168.50.2
 
 
 Running rc jimny instructions:
-Open four terminals
-1) put cube usb in the vertical slot of the jetson
-2) Put steering board usb in one of the horizontal usb ports
+Open four terminals, ssh into the jetson (see here) in each one.
+
+1) put cube-usb cable in the vertical slot of the jetson
+2) Put steering-board-usb cable in one of the horizontal usb ports
 3) Run this command to check if it is in the correct port (the correct one is USB0 for the steering):
   ls /dev/tty*CH* /dev/ttyUSB*
-4) 
+4) Attach the sterfboard-usb cable in the last port
+5) 
+In terminal 1, 
+      cd /workspaces/jimny/jimny_ws
+      ros2 run cuberos cuberos_node.py
+(expect  "no message received"  message but it's fine)
+
+In terminal 2
+      cd /workspaces/jimny/jimny_ws
+      ros2 run to_vehicle to_vehicle /dev/ttyCH341USB1
+
+In terminal 3
+      cd ~/ackermann_to_steering_serial 
+      python3 ackermann_to_steering_serial_final.py /dev/ttyCH341USB0
+
+In terminal 4
+      cd /workspaces/jimny/jimny_ws
+      ros2 run mode_switching switch
+
+
+
