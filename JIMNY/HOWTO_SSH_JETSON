@@ -1,0 +1,34 @@
+All the working repository is currently on the Jetson. 
+To connect via SSH, find out what commands need to be run on your laptop.
+In our case, I'm running 22.04.5 LTS (Jammy Jellyfish), and used these commands:
+
+Step 1: Find your laptop's Ethernet interface name
+Open your terminal and run:
+
+nmcli device
+
+Step 2: Create the Jetson Network Profile
+Run this command to create a permanent network profile that forces your laptop to act as the 192.168.50.1 master.
+(Replace <INTERFACE_NAME> with the name you found in Step 1!)
+
+sudo nmcli con add type ethernet con-name "Jetson-Direct" ifname <INTERFACE_NAME> ipv4.method manual ipv4.addresses 192.168.50.1/24
+
+Step 3: Wake up the port
+Force your laptop to apply the new profile:
+
+sudo nmcli con up "Jetson-Direct"
+
+
+Step 4: SSH into the Jetson
+Now that your laptop is the master, the pipeline is open. Run:
+
+ssh user@192.168.50.2
+
+
+Running rc jimny instructions:
+Open four terminals
+1) put cube usb in the vertical slot of the jetson
+2) Put steering board usb in one of the horizontal usb ports
+3) Run this command to check if it is in the correct port (the correct one is USB0 for the steering):
+  ls /dev/tty*CH* /dev/ttyUSB*
+4) 
