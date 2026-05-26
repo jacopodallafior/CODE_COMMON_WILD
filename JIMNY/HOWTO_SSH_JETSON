@@ -26,6 +26,10 @@ ssh user@192.168.50.2
 
 
 Running rc jimny instructions:
+Connect the main power source coming from the car's battery to the boards and drivers.
+Power the jetson.
+Connect through ethernet to the jetson with your computer.
+Switch ignition on of the Jimny, but don't start the engine yet.
 Open four terminals, ssh into the jetson (see here) in each one.
 
 1) put cube-usb cable in the vertical slot of the jetson
@@ -52,4 +56,10 @@ In terminal 4
       ros2 run mode_switching switch
 
 
+Start the car.
+Turn on the Herelink Handheld controller,
+Select manual mode
+Arm
 
+To power off the jetson via ssh (ALWAYS do this before disconnecting power from the jetson), run this command in one of the ssh terminals:
+      sudo poweroff
