@@ -24,6 +24,8 @@ Now that your laptop is the master, the pipeline is open. Run:
 
 ssh user@192.168.50.2
 
+The password is: admin
+
 
 Running rc jimny instructions:
 Connect the main power source coming from the car's battery to the boards and drivers.
