@@ -30,7 +30,7 @@ Open four terminals, ssh into the jetson (see here) in each one.
 
 1) put cube-usb cable in the vertical slot of the jetson
 2) Put steering-board-usb cable in one of the horizontal usb ports
-3) Run this command to check if it is in the correct port (the correct one is USB0 for the steering):
+3) Run this command to check if it is in the correct port (the correct one is USB0 for the steering, otherwise change the commands below to the right port):
   ls /dev/tty*CH* /dev/ttyUSB*
 4) Attach the sterfboard-usb cable in the last port
 5) 
