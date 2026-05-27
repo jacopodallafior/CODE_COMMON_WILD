@@ -29,15 +29,16 @@ The password is: admin
 
 Running rc jimny instructions:
 Connect the main power source coming from the car's battery to the boards and drivers.
+Check that the jetson battery is fully charged (more than 24V, this will last 2-3 hours), if it's below 21V the battery is fully drained.
 Power the jetson.
 Connect through ethernet to the jetson with your computer.
 Switch ignition on of the Jimny, but don't start the engine yet.
 Open four terminals, ssh into the jetson (see here) in each one.
 
-1) put cube-usb cable in the vertical slot of the jetson
-2) Put steering-board-usb cable in one of the horizontal usb ports
-3) Run this command to check if it is in the correct port (the correct one is USB0 for the steering, otherwise change the commands below to the right port):
+1) Put steering-board-usb cable in one of the horizontal usb ports
+2) Run this command to check if it is in the correct port (the correct one is USB0 for the steering, otherwise change the commands below to the right port):
   ls /dev/tty*CH* /dev/ttyUSB*
+3) put cube-usb cable in the vertical slot of the jetson
 4) Attach the sterfboard-usb cable in the last port
 5) 
 In terminal 1, 
