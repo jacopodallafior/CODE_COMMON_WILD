@@ -33,7 +33,6 @@ Open your laptop's terminal and run:
 ```bash
 nmcli device
 ```
-*Note down your Ethernet interface name (e.g., `enp3s0`, `eth0`).*
 
 ### Step 2: Create the Jetson Network Profile
 Run this command to create a permanent network profile that forces your laptop to act as the master with IP `192.168.50.1`. 
@@ -71,7 +70,6 @@ Before running the ROS nodes, you must check which logical ports the system assi
 ```bash
 ls /dev/tty*CH* /dev/ttyUSB*
 ```
-*📌 Note: The correct port for the steering is usually `USB0`. If the output shows a different assignment, change the `USB0` or `USB1` strings in the commands below to the right port.*
 
 ### Running ROS2 Nodes
 
