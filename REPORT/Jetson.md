@@ -22,36 +22,49 @@ Before powering on the system, make sure the following components are properly c
 
 ---
 
-##  2. Accessing the Jetson (SSH or via Ethernet)
+## 💻 2. Accessing the Jetson (SSH Connections)
 
-All the working repository is currently on the Jetson. To control it, we will use an SSH connection or via an Ethernet cable from your laptop. 
+All the working repository is currently on the Jetson. To control it, you need to access it via SSH from your laptop. You have two options depending on your setup. 
 
-The following commands apply if you are running **Ubuntu 22.04 LTS (Jammy Jellyfish)** on your laptop.
+*Important Note: If the Jetson is completely powered off or has no internet connection, you cannot do anything from the laptop. Tailscale cannot physically power on the Jetson.*
 
-### Step 1: Find your laptop's Ethernet interface name
-Open your laptop's terminal and run:
-```bash
-nmcli device
-```
+### Option A: Direct Connection (Ethernet Cable) - *Recommended for field tests*
+Use this method when you are directly connected to the Jetson via an Ethernet cable.
 
-### Step 2: Create the Jetson Network Profile
-Run this command to create a permanent network profile that forces your laptop to act as the master with IP `192.168.50.1`. 
-(Replace `<INTERFACE_NAME>` with the name you found in Step 1!)
-```bash
-sudo nmcli con add type ethernet con-name "Jetson-Direct" ifname <INTERFACE_NAME> ipv4.method manual ipv4.addresses 192.168.50.1/24
-```
+1. Connect the Ethernet cable between your laptop and the Jetson.
+2. Open your laptop terminal and find the Ethernet interface name:
 
-### Step 3: Wake up the port
-Force your laptop to apply the new profile:
-```bash
-sudo nmcli con up "Jetson-Direct"
-```
+    ip link
 
-### Step 4: SSH into the Jetson
-Now that the pipeline is open, access the Jetson. The password is `admin`:
-```bash
-ssh user@192.168.50.2
-```
+   *(Look for a name like `enp3s0`, `eno1`, `eth0`, etc.)*
+
+3. Assign an IP to your laptop in the same network as the Jetson (replace `enp3s0` with your actual interface name):
+
+    sudo ip addr add 192.168.50.10/24 dev enp3s0
+    sudo ip link set enp3s0 up
+
+4. Test the connection:
+
+    ping 192.168.50.2
+
+5. If it pings successfully, SSH into the Jetson (password is `admin`):
+
+    ssh user@192.168.50.2
+
+### Option B: Remote Connection (Tailscale / Wi-Fi)
+Use this method for remote access when both the laptop and the Jetson are connected to the Internet (e.g., via Wi-Fi or router). 
+
+1. On your laptop, check Tailscale status:
+
+    tailscale status
+
+   *(If it says "Logged out", run `sudo tailscale up` and log in via browser).*
+
+2. Verify that the Jetson is online. In the `tailscale status` output, you should see `jetson-rover` as active. If it says `offline`, the Jetson has no internet connection or is powered off.
+
+3. SSH into the Jetson using its Tailscale hostname (recommended because it's easier to remember):
+
+    ssh user@jetson-rover
 
 ---
 
