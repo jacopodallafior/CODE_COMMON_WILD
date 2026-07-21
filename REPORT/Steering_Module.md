@@ -15,9 +15,12 @@ With these we obtained the following results: (add pictures of graphs)
 Based on these we made a quick prototype board with an arduino and a DAC to check if the EPS would have enough torque to move the wheels with the car on the floor, standing still, and it succeeded.
 
 Now that we have actuation, we move to step 2: obtain position of the wheels.
-
+Previous interns adapted the chain + sprocket that was used to actuate the column to attach an encoder. This has been chosen to confirm the functionality of the system and works, but it is not an absolute encoder and because it uses a heavy chain with quite some slack, the measurement is not particularly precise, and it needs to be calibrated every time (either automatically if you let the wheels go all the way to one side and then the other, or manually by always checking they're facing straight before startup)
 
 Finally, once everything had been tested individually, we made a board to connect to the rest of the system.
+<img width="960" height="720" alt="image" src="https://github.com/user-attachments/assets/5d07cf36-bc84-4f8c-b04c-b54ed414a557" />
+
+
 
 Improvement points:
 - automated (safe) mode switching via relays to go between autonomous/remote control and direct control (person in the car)
