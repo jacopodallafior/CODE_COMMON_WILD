@@ -6,37 +6,39 @@ In short, to achieve autonomous steering, we need:
 The first step has been tackled previously by adding a sprocket directly on the steering column attached to a motor, but the torque was insufficient.
 
 <img width="1600" height="1200" alt="steering_first" src="https://github.com/user-attachments/assets/426eec7c-3a9a-4897-bc44-52faad88e954" />
-(add picture of the chain, note that it is now used with the angle encoder)
+Above is a picture of the chain, note that it is now used with the angle encoder.
 
 Later a different approach was attempted, reasoning that if the motor could be attached to the steering wheel then the car's power steering would help turn, and thus a lower torque motor would suffice. A solution was designed which uses a big stepper motor which grips on the steering wheel to turn, but this was found to be slipping and cumbersome to setup and dismantle. 
 
 <img width="4032" height="3024" alt="IMG_2872" src="https://github.com/user-attachments/assets/8fccff29-8457-44ca-a8f4-faac90ec03bd" />
-(add picture of the old steering actuator)
+Above is a picture of the old steering actuator.
 
 Upon studying the actual working of the Jimny's steering system, we noticed that it uses a Electronic Power Steering (EPS).
 There is a torque sensor on the steering column, and based on the effort input by the driver on the steering wheel a signal is sent to the EPS ECU, basically telling the motor to help steer the wheels in the direction commanded by the driver.
 
 
 <img width="1200" height="1600" alt="steering_column" src="https://github.com/user-attachments/assets/2bb007c5-97d9-4b62-adb9-5af22516033c" />
-(add picture of original jimny steering system)
+Above is a picture of original jimny steering system.
 
 We quickly pulled out an old oscilloscope and measured what type of signals were being transmitted to check if we could easily replicate them. 
 
 <img width="1176" height="662" alt="oscilloscope" src="https://github.com/user-attachments/assets/15153a2e-49b3-4283-9411-d3f8a3166665" />
+Above is a picture of the oscilloscope
 <img width="1200" height="1600" alt="oscilloscope_connection" src="https://github.com/user-attachments/assets/392d5477-dd01-403e-b1c2-a0ab73cbae60" />
-(add picture/video of oscilloscope) 
+Above is a picture of where we connected the probes.
 
 It turns out these were simple signals, so we made a quick sniffing device with an arduino uno and tapped into the signal wires. 
 
 <img width="1274" height="879" alt="image (1)" src="https://github.com/user-attachments/assets/b05060fe-f27b-40d5-96e2-fec1ce80239e" />
-(add schematics of the sniffer)
+Above is a picture of the schematics of the sniffer)
 
 With these we obtained the following results:
+
 <img width="360" height="264" alt="graph_steering3" src="https://github.com/user-attachments/assets/562874cb-6f0e-4081-ae93-fbfeee04402d" />
 <img width="253" height="192" alt="graph_steering2" src="https://github.com/user-attachments/assets/af32b5bd-db94-4659-8c70-e3b8deb46180" />
 <img width="309" height="153" alt="graph_steering1" src="https://github.com/user-attachments/assets/d4948784-f74e-4e5e-959e-f30e8a972925" />
+The three pictures above are plotted from our signal sniffer board.
 
-(add pictures of graphs)
 Based on these we made a quick prototype board with an arduino and a DAC to check if the EPS would have enough torque to move the wheels with the car on the floor, standing still, and it succeeded.
 <img width="960" height="720" alt="image" src="https://github.com/user-attachments/assets/5d07cf36-bc84-4f8c-b04c-b54ed414a557" />
 
