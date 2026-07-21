@@ -21,6 +21,7 @@ Previous interns adapted the chain + sprocket that was used to actuate the colum
 Finally, once everything had been tested individually, we made a board to connect to the rest of the system.
 <img width="725" height="526" alt="image" src="https://github.com/user-attachments/assets/31b9d554-9afa-42c7-8c11-25ac748671e0" />
 
+<img width="1200" height="1600" alt="steering_finished" src="https://github.com/user-attachments/assets/ede3d55d-4942-469e-a7e0-5130e53b9227" />
 
 
 Improvement points:
