@@ -22,7 +22,7 @@ Before powering on the system, make sure the following components are properly c
 
 ---
 
-## 💻 2. Accessing the Jetson (SSH Connections)
+##  2. Accessing the Jetson (SSH Connections)
 
 All the working repository is currently on the Jetson. To control it, you need to access it via SSH from your laptop. You have two options depending on your setup. 
 
