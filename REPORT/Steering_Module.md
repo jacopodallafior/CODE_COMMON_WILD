@@ -24,13 +24,19 @@ We quickly pulled out an old oscilloscope and measured what type of signals were
 
 <img width="1176" height="662" alt="oscilloscope" src="https://github.com/user-attachments/assets/15153a2e-49b3-4283-9411-d3f8a3166665" />
 <img width="1200" height="1600" alt="oscilloscope_connection" src="https://github.com/user-attachments/assets/392d5477-dd01-403e-b1c2-a0ab73cbae60" />
+(add picture/video of oscilloscope) 
 
-(add picture video of oscilloscope) 
+It turns out these were simple signals, so we made a quick sniffing device with an arduino uno and tapped into the signal wires. 
 
-It turns out these were simple signals, so we made a quick sniffing device with an arduino uno and tapped into the signal wires. (add schematics of the sniffer)
+<img width="1274" height="879" alt="image (1)" src="https://github.com/user-attachments/assets/b05060fe-f27b-40d5-96e2-fec1ce80239e" />
+(add schematics of the sniffer)
 
+With these we obtained the following results:
+<img width="360" height="264" alt="graph_steering3" src="https://github.com/user-attachments/assets/562874cb-6f0e-4081-ae93-fbfeee04402d" />
+<img width="253" height="192" alt="graph_steering2" src="https://github.com/user-attachments/assets/af32b5bd-db94-4659-8c70-e3b8deb46180" />
+<img width="309" height="153" alt="graph_steering1" src="https://github.com/user-attachments/assets/d4948784-f74e-4e5e-959e-f30e8a972925" />
 
-With these we obtained the following results: (add pictures of graphs)
+(add pictures of graphs)
 Based on these we made a quick prototype board with an arduino and a DAC to check if the EPS would have enough torque to move the wheels with the car on the floor, standing still, and it succeeded.
 <img width="960" height="720" alt="image" src="https://github.com/user-attachments/assets/5d07cf36-bc84-4f8c-b04c-b54ed414a557" />
 
