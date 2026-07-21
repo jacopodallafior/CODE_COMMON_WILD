@@ -8,8 +8,8 @@ This wiki outlines the complete steps to connect the Jetson hardware, configure 
 
 Before powering on the system, make sure the following components are properly connected. The connection order for some components is crucial for a successful boot.
 
-![Jetson ports view](images/WhatsApp Image 2026-07-21 at 12.27.33.jpeg)
-*(Replace the text in parentheses with the actual link or path to your image)*
+![Jetson ports view](images/WhatsApp%Image%2026-07-21%at%12.27.33.jpeg)
+
 
 1. **HDMI Module (Dummy Plug):** Connect this **first**. It is essential to trick the Jetson into booting properly without a physical monitor (headless mode).
 2. **Main Power:** Connect the power source to the Jetson. 
@@ -17,8 +17,8 @@ Before powering on the system, make sure the following components are properly c
 3. **Cube Orange:** Plug the Cube Orange USB cable into the **vertical slot** of the Jetson.
 4. **Additional Boards (Steering-board and Sterfboard):** Plug the two USB cables into the horizontal ports (one top and one bottom). **The physical order does not matter**: the correct assignment will be checked and managed via software from the terminal.
 
-![Jetson connected to power](images/WhatsApp Image 2026-07-21 at 12.27.34 (4).jpeg)
-*(Replace the text in parentheses with the actual link or path to your image)*
+![Jetson connected to power](images/WhatsApp%Image%2026-07-21%at%12.27.34%(4).jpeg)
+
 
 ---
 
