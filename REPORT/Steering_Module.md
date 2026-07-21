@@ -1,60 +1,91 @@
-In short, to achieve autonomous steering, we need:
-1. an actuator to turn the wheels
-2. a sensor to measure the position of the wheels
-3. a local controller to communicate with the brain of the global system
+# Autonomous Steering Module: Engineering Log & Architecture
 
-The first step has been tackled previously by adding a sprocket directly on the steering column attached to a motor, but the torque was insufficient.
+## System Objective
+To achieve autonomous steering on the Suzuki Jimny, this module requires three integrated components:
+1. **Actuator:** To physically manipulate the steering axis.
+2. **Sensor:** To measure real-time wheel position.
+3. **Local Controller:** To interface between the low-level hardware and the global autonomous system brain.
 
-<img width="1600" height="1200" alt="steering_first" src="https://github.com/user-attachments/assets/426eec7c-3a9a-4897-bc44-52faad88e954" />
-Above is a picture of the chain, note that it is now used with the angle encoder.
+This document outlines the iterative development process, current system architecture, and immediate improvement points for incoming engineering teams.
 
-Later a different approach was attempted, reasoning that if the motor could be attached to the steering wheel then the car's power steering would help turn, and thus a lower torque motor would suffice. A solution was designed which uses a big stepper motor which grips on the steering wheel to turn, but this was found to be slipping and cumbersome to setup and dismantle. 
+---
 
-<img width="4032" height="3024" alt="IMG_2872" src="https://github.com/user-attachments/assets/8fccff29-8457-44ca-a8f4-faac90ec03bd" />
-Above is a picture of the old steering actuator.
+## Phase 1: Actuation & Iterative Failures
+Actuating the steering mechanically proved difficult. The first two attempts failed due to mechanical constraints, leading us to our current electrical solution. 
 
-Upon studying the actual working of the Jimny's steering system, we noticed that it uses a Electronic Power Steering (EPS).
-There is a torque sensor on the steering column, and based on the effort input by the driver on the steering wheel a signal is sent to the EPS ECU, basically telling the motor to help steer the wheels in the direction commanded by the driver.
+*   **Iteration 1: Direct Column Drive** 
+    Previous interns attached a motor-driven sprocket directly to the steering column via a chain. 
+    *Result:* Failed. The motor output torque was insufficient to turn the column under load. 
+    <img width="1600" height="1200" alt="steering_first" src="https://github.com/user-attachments/assets/426eec7c-3a9a-4897-bc44-52faad88e954" />
+    *(Note: This chain mechanism was later repurposed for the angle encoder, detailed in Phase 3).*
 
+*   **Iteration 2: Steering Wheel Friction Drive** 
+    After, they thought they could leverage the vehicle's native power steering, and mounted a large stepper motor directly to the steering wheel to drive it via friction.
+    *Result:* Failed. The mechanism suffered from excessive slip and the mounting hardware was cumbersome to install and dismantle.
+    <img width="4032" height="3024" alt="IMG_2872" src="https://github.com/user-attachments/assets/8fccff29-8457-44ca-a8f4-faac90ec03bd" />
+
+---
+
+## Phase 2: The EPS Breakthrough
+Instead of fighting the steering mechanics, we investigated the Jimny's native Electronic Power Steering (EPS). 
+
+The EPS system uses a torque sensor on the steering column. When a driver turns the wheel, the sensor sends a proportional signal to the EPS ECU, which commands an assist motor. **Our solution: Spoof the torque sensor signal to make the EPS motor do the work for us.**
 
 <img width="1200" height="1600" alt="steering_column" src="https://github.com/user-attachments/assets/2bb007c5-97d9-4b62-adb9-5af22516033c" />
-Above is a picture of original jimny steering system.
+*Jimny native steering column and EPS architecture.*
 
-We quickly pulled out an old oscilloscope and measured what type of signals were being transmitted to check if we could easily replicate them. 
+### Signal Interception
+We probed the native EPS torque sensor lines using an oscilloscope to characterize the signaling protocol. 
 
-<img width="1176" height="662" alt="oscilloscope" src="https://github.com/user-attachments/assets/15153a2e-49b3-4283-9411-d3f8a3166665" />
-Above is a picture of the oscilloscope
-<img width="1200" height="1600" alt="oscilloscope_connection" src="https://github.com/user-attachments/assets/392d5477-dd01-403e-b1c2-a0ab73cbae60" />
-Above is a picture of where we connected the probes.
+<p float="left">
+  <img width="500" alt="oscilloscope_connection" src="https://github.com/user-attachments/assets/392d5477-dd01-403e-b1c2-a0ab73cbae60" />
+  <img width="500" alt="oscilloscope" src="https://github.com/user-attachments/assets/15153a2e-49b3-4283-9411-d3f8a3166665" />
+</p>
 
-It turns out these were simple signals, so we made a quick sniffing device with an arduino uno and tapped into the signal wires. 
+The signals were straightforward analog voltages. We built a custom sniffer board using an Arduino Uno to tap into the signal wires and map the required voltage profiles for left and right actuation.
 
 <img width="1274" height="879" alt="image (1)" src="https://github.com/user-attachments/assets/b05060fe-f27b-40d5-96e2-fec1ce80239e" />
-Above is a picture of the schematics of the sniffer)
+*Arduino-based signal sniffer schematic.*
 
-With these we obtained the following results:
+**Captured Signal Profiles:**
+<p float="left">
+  <img width="309" height="153" alt="graph_steering1" src="https://github.com/user-attachments/assets/d4948784-f74e-4e5e-959e-f30e8a972925" />
+  <img width="253" height="192" alt="graph_steering2" src="https://github.com/user-attachments/assets/af32b5bd-db94-4659-8c70-e3b8deb46180" />
+  <img width="360" height="264" alt="graph_steering3" src="https://github.com/user-attachments/assets/562874cb-6f0e-4081-ae93-fbfeee04402d" />
+</p>
 
-<img width="360" height="264" alt="graph_steering3" src="https://github.com/user-attachments/assets/562874cb-6f0e-4081-ae93-fbfeee04402d" />
-<img width="253" height="192" alt="graph_steering2" src="https://github.com/user-attachments/assets/af32b5bd-db94-4659-8c70-e3b8deb46180" />
-<img width="309" height="153" alt="graph_steering1" src="https://github.com/user-attachments/assets/d4948784-f74e-4e5e-959e-f30e8a972925" />
-The three pictures above are plotted from our signal sniffer board.
+### EPS Actuation Proof of Concept
+We built a prototype board combining an Arduino and a Digital-to-Analog Converter (DAC) to inject simulated voltage signals directly into the EPS ECU. 
+*Result:* Success. The injected signals commanded the EPS to output enough torque to actuate the wheels while the vehicle was stationary on the ground (static dry-steering).
 
-Based on these we made a quick prototype board with an arduino and a DAC to check if the EPS would have enough torque to move the wheels with the car on the floor, standing still, and it succeeded.
 <img width="960" height="720" alt="image" src="https://github.com/user-attachments/assets/5d07cf36-bc84-4f8c-b04c-b54ed414a557" />
+*DAC Injection Prototype.*
 
-Now that we have actuation, we move to step 2: obtain position of the wheels.
-Previous interns adapted the chain + sprocket that was used to actuate the column to attach an encoder. This has been chosen to confirm the functionality of the system and works, but it is not an absolute encoder and because it uses a heavy chain with quite some slack, the measurement is not particularly precise, and it needs to be calibrated every time (either automatically if you let the wheels go all the way to one side and then the other, or manually by always checking they're facing straight before startup)
+---
 
-Finally, once everything had been tested individually, we made a board to connect to the rest of the system.
-<img width="725" height="526" alt="image" src="https://github.com/user-attachments/assets/31b9d554-9afa-42c7-8c11-25ac748671e0" />
+## Phase 3: Position Sensing
+With actuation solved, we required real-time steering angle telemetry. 
 
-<img width="1200" height="1600" alt="steering_finished" src="https://github.com/user-attachments/assets/ede3d55d-4942-469e-a7e0-5130e53b9227" />
+Previous interns retrofitted the discarded chain-and-sprocket hardware from Iteration 1 to drive a rotary encoder. While this confirmed the system logic works, it introduces two major structural flaws that must be addressed in future iterations:
+1. **Mechanical Hysteresis:** The heavy chain introduces significant slack, severely degrading measurement precision.
+2. **Relative Measurement:** The current encoder is not absolute. The system requires manual calibration at every boot (either physically aligning the wheels dead-center, or running an automated sweep from lock-to-lock).
 
+---
 
-Improvement points:
-- automated (safe) mode switching via relays to go between autonomous/remote control and direct control (person in the car)
-- new board and permanent wiring
-- better angle measurement (either better encoder or telemetry through the car's original sensor)
+## Phase 4: System Integration
+Following individual component validation, we designed and assembled the final local control board. This board integrates the DAC signal injection and the encoder telemetry, serving as the bridge to the global system brain.
 
+<p float="left">
+  <img width="500" alt="image" src="https://github.com/user-attachments/assets/31b9d554-9afa-42c7-8c11-25ac748671e0" />
+  <img width="500" alt="steering_finished" src="https://github.com/user-attachments/assets/ede3d55d-4942-469e-a7e0-5130e53b9227" />
+</p>
+*Final integrated board design and physical installation.*
 
+---
 
+## Phase 5: Next Steps & Roadmap
+Immediate priorities for incoming interns center on safety, precision, and robustness:
+
+*   **Mode-Switching Interlocks:** Implement automated, relay-driven mode switching (similar to the accellerator module). The system requires a fault-tolerant method to toggle between autonomous control, remote control, and direct manual override (driver in the cabin).
+*   **Sensor Upgrade:** Eliminate the chain-drive entirely. Source and mount an absolute rotary encoder directly to the column, or reverse-engineer the vehicle's native CAN bus to extract existing steering telemetry.
+*   **Hardware Hardening:** Replace prototype wiring with a permanent, vibration-resistant PCB and shielded wiring harness.
