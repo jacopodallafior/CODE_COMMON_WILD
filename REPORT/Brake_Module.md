@@ -113,7 +113,7 @@ The brake board is also connected to the vehicle CAN bus. It receives the Steerf
 
 The motor bracket was designed in CAD and 3D-printed. It is an L-shaped support with triangular gussets for stiffness, a central opening for the motor shaft/coupling, four motor-face mounting holes, and mounting features for installation in the vehicle.
 
-![CAD render of motor mount bracket](Screenshot.png)
+![CAD render of motor mount bracket](images/Screenshot.png)
 
 The design goal is to hold the NEMA-34 motor rigidly relative to the brake pedal assembly so that the cable drum pulls along the intended cable direction.
 
@@ -121,11 +121,11 @@ The design goal is to hold the NEMA-34 motor rigidly relative to the brake pedal
 
 The actuator is mounted in the driver footwell close to the brake pedal column.
 
-![Installed motor — side view showing coupling and cable](motormount2.jpeg)
+![Installed motor — side view showing coupling and cable](images/motormount2.jpeg)
 
 The motor shaft drives a cable drum/coupling. The cable is routed from this drum to the brake mechanism so that motor rotation produces brake-pedal displacement.
 
-![Full footwell installation showing motor, bracket, and pedal](motormount1.jpeg)
+![Full footwell installation showing motor, bracket, and pedal](images/motormount1.jpeg)
 
 ### 2.3 Coupling and cable
 
@@ -199,7 +199,7 @@ Vehicle battery (+)
         ▼
    NEMA-34 motor
 ```
-![Connection with a fuse directly to the battery](WhatsApp_Image_2026-07-21_at_12.27.34_(1).jpeg
+![Connection with a fuse directly to the battery](images/WhatsApp_Image_2026-07-21_at_12.27.34_(1).jpeg
 )
 
 The SteerfBoard firmware contains a `relay48v` output as part of the vehicle power/safety architecture. The exact active-high/active-low electrical behavior depends on the installed relay interface and should be verified against the vehicle wiring.
@@ -811,7 +811,7 @@ homingState = 0;
 ```
 
 Unlike the old manual GUI-based home-setting workflow, the current system derives its reference from the analog brake-sense input.
-![Cable connection for homing logic](WhatsApp_Image_2026-07-21_at_12.27.31_(1).jpeg)
+![Cable connection for homing logic](images/WhatsApp_Image_2026-07-21_at_12.27.31_(1).jpeg)
 
 ### 12.1 Sensor condition
 
