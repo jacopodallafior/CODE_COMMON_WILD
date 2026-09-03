@@ -775,29 +775,8 @@ The key points are:
 11. SteerfBoard no longer sends steering commands.
 12. Steering is controlled directly through USB1.
 13. `relay48v` is HIGH only in AUTO at firmware level.
-14. The physical HIGH/LOW relay polarity must be confirmed from the wiring.
 
 ---
-
-## Related Documentation
-
-```text
-README_ARCHITECTURE.md
-    → complete board-to-board architecture
-
-steerfBoard/README.md
-    → this document
-
-axelBrake/README.md
-    → longitudinal PID and throttle/brake demand
-
-brake/README.md
-    → brake actuator and homing
-
-steering/README.md
-    → steering PID, encoder and USB control
-
-hardware/README.md
     → buttons, relays, wiring and power
 
 can_ids.h
