@@ -590,4 +590,3 @@ The most important current behaviors are:
 10. Loss of the SteerfBoard heartbeat also produces 100% braking.
 11. AxelBrake sends its own heartbeat back to SteerfBoard for system supervision.
 
-Detailed PID tuning and hardware-specific accelerator electronics should be documented separately if further development of this pre-existing module is required.
