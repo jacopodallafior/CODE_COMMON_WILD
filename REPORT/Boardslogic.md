@@ -459,11 +459,11 @@ Only the IDs explicitly confirmed in the supplied source are shown numerically h
 | CAN symbol | Known ID | Producer | Consumer | Main content |
 |---|---:|---|---|---|
 | `CAN_HB_STERFBOARD` | `0x01` | SteerfBoard | AxelBrake, Brake Board | heartbeat interval + global mode |
-| `CAN_HB_AXELBRAKE` | `can_ids.h` | AxelBrake | SteerfBoard | longitudinal controller status |
-| `CAN_HB_STEERING` | `can_ids.h` | Steering Board | SteerfBoard | steering command/angle telemetry |
+| `CAN_HB_AXELBRAKE` | `0x12` | AxelBrake | SteerfBoard | longitudinal controller status |
+| `CAN_HB_STEERING` | `0x14` | Steering Board | SteerfBoard | steering command/angle telemetry |
 | `CAN_HB_BRAKE` | `0x13` | Brake Board | SteerfBoard | step position + last brake % |
-| `CAN_VELOCITY_TARGET` | `can_ids.h` | SteerfBoard | AxelBrake | target velocity + acceleration |
-| `CAN_GPS_VELOCITY` | `can_ids.h` | SteerfBoard | AxelBrake | GPS speed |
+| `CAN_VELOCITY_TARGET` | `0x120` | SteerfBoard | AxelBrake | target velocity + acceleration |
+| `CAN_GPS_VELOCITY` | `0x121` | SteerfBoard | AxelBrake | GPS speed |
 | `CAN_BRAKE_PCT` | `0x130` | AxelBrake | Brake Board | brake percentage |
 | `CAN_STEERING_TARGET` | legacy/current header | legacy path | Steering Board | steering angle + rate |
 
